@@ -30,9 +30,10 @@ function handleDayRequest(req, weat) {
 }
 
 function Location(datas) {
-    this.formatted_query = datas.display_name;
-    this.latitude = datas.lat;
-    this.longitude = datas.lon;
+    this.search_query = datas.display_name;
+    this.formatted_query = datas[0].display_name;
+    this.latitude = datas[0].lat;
+    this.longitude = datas[0].lon;
 }
 
 function Data(datas) {
