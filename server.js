@@ -40,6 +40,10 @@ function Data(datas) {
     this.datetime = datas.weather.datetime;
 }
 
+app.use('*', (request, response) => {
+    response.send('hello');
+
+});
 app.listen(PORT, () => {
     console.log(PORT + 'hello');
 })
