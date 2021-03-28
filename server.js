@@ -43,8 +43,14 @@ function Data(datas) {
     this.time = datas.datetime;
 }
 
-app.use('*', (request, response) => {
-    response.send('hello');
+function error(req, res) {
+    if (res) res.status(500).send("sorry, something went error");
+}
+
+
+
+app.use('*', (req, res) => {
+    res.send('hello');
 
 });
 app.listen(PORT, () => {
