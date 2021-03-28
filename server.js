@@ -30,7 +30,7 @@ function handleDayRequest(req, weat) {
 }
 
 function Location(datas) {
-    this.search_query = datas.display_name;
+    this.search_query = 'lynnwood';
     this.formatted_query = datas[0].display_name;
     this.latitude = datas[0].lat;
     this.longitude = datas[0].lon;
