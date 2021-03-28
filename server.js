@@ -13,32 +13,34 @@ app.get('/location', handleLocationRequest);
 app.get('/weather', handleDayRequest);
 
 
-function handleLocationRequest(req, weat) {
-    const searchQuery = req.query;
-    const locationRawData = require('./data/location.json');
-    const location = new Location(locationRawData[0])
-    weat.send(location);
+function handleLocationRequest(req, res) {
+    // const searchQuery = req.query;
+    const locationData = require('./data/location.json');
+    const location = new Location(locationData)
+    res.send(location);
 }
 
-function handleDayRequest(req, weat) {
-    const weatherData = require('./data/weather.json');
-    const weeklyWeather = [];
-    weatherData.data.forEach(weather => {
-        weeklyWeather.push(new Data(weather))
+
+function handleDayRequest(req, res) {
+    const getWeatherData = require('./data/weather.json');
+    const dataWeather = [];
+    getWeatherData.data.forEach(element => {
+        dataWeather.push(new Data(element))
     })
-    weat.send(weeklyWeather);
+    res.send(dataWeather);
 }
 
 function Location(datas) {
-    this.search_query = 'lynnwood';
+    this.search_query = 'Lynnwood';
     this.formatted_query = datas[0].display_name;
     this.latitude = datas[0].lat;
     this.longitude = datas[0].lon;
 }
 
+
 function Data(datas) {
-    this.description = datas.weather.description;
-    this.datetime = datas.weather.datetime;
+    this.forecast = datas.weather.description;
+    this.time = datas.datetime;
 }
 
 app.use('*', (request, response) => {
