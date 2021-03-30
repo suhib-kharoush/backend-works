@@ -26,7 +26,7 @@ app.get('/weather', handleDayRequest);
 app.get('/park', parkHandler);
 app.use('*', notFoundHandler);
 app.get('/', (req, res) => {
-    response.status(200).send('ok');
+    res.status(200).send('ok');
 });
 
 
