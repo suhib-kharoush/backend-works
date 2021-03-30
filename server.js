@@ -2,13 +2,15 @@
 
 require('dotenv').config();
 
+// const server = express();
+// server.use(cors());
 const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
-// const { response } = require('express');
 
 const PORT = process.env.PORT;
 const GEO_CODE_API_KEY = process.env.GEO_CODE_API_KEY;
+const PARK_API_KEY = process.env.PARK_API_KEY;
 const app = express();
 app.use(cors());
 
@@ -20,28 +22,20 @@ app.use('*', notFoundHandler);
 
 function handleLocationRequest(req, res) {
     // const searchQuery = req.query;
-    const cityName = req.query.city;
-    const url = `https://eu1.locationq.com/v1/search.php`;
+    const city = req.query.city;
+    const urlGEO = `https://us1.locationiq.com/v1/search.php?key=${GEO_CODE_API_KEY}&q=${city}&format=json`;
     // https://eu1.locationiq.com/v1/search.php?key=pk.5fef4bef87a31d4d9cfb6f09f0cd8468=amman&format=json
     // const locationData = require('./data/location.json');
     // const location = new Location(locationData)
     // res.send(location);
 
 
-
-
-    const cityQueryParam = {
-        key: GEO_CODE_API_KEY,
-        city: cityName,
-        format: 'json'
-    };
-
-
-    if (!cityName) {
+    if (!city) {
         res.status(404).send('no search query was provided');
     }
 
-    superagent.get(url).query(cityQueryParam).then(resData => {
+    superagent.get(urlGEO).then(resData => {
+        console.log(resData.body);
         const location = new Location(city, resData.body[0]);
         res.status(200).send(location)
     }).catch((error) => {
@@ -60,13 +54,13 @@ function Location(city, geoData) {
     this.longitude = geoData.lon;
 }
 
-
-function Park(parkData) {
-    this.name = parkData.name;
-    this.address = parkData.address;
-    this.fee = parkData.fee;
-    this.description = parkData.description;
-    this.url3 = parkData.url;
+// data.addresses[0] 
+function Park(data) {
+    this.name = data.name;
+    this.address = `${data.addresses[0].line1} ${data.addresses[0].city} ${data.addresses[0].stateCode} ${data.addresses[0].postalCode}`;
+    this.fee = '0.00';
+    this.description = data.description;
+    this.url3 = data.url;
 }
 
 function parkHandler(req, res) {
@@ -76,7 +70,7 @@ function parkHandler(req, res) {
 
 
     // let url = `https://developer.nps.gov/api/v1/parks?parkCode=${parkCode}&api_key=${parkKey}`;
-    let url3 = `https://developer.nps.gov/api/v1/parks?latitude=${latitude}&longitude=${longitude}&api_key=${parkKey}`;
+    let url3 = `https://developer.nps.gov/api/v1/parks?parkCode=acad&api_key=${parkKey}&limit=10`;
     superagent.get(url3).then(parkData => {
         let parkd = parkData.body.data.map(element => {
             const parkObj = new Park(element);
@@ -93,24 +87,32 @@ function parkHandler(req, res) {
 
 
 function notFoundHandler(req, res) {
-    response.status(404).send('huh?');
+    res.status(404).send('huh?');
 }
 
 
 function handleDayRequest(req, res) {
     // const getWeatherData = require('./data/weather.json');
-    const dataWeather = [];
+    // const dataWeather = [];
     let weatherKey = process.env.WEATHER_API_KEY;
-    const cityName = req.query.search_query;
-    const url2 = `https://api.weatherbit.io/v2.0/forecast/daily?city=${cityName}&key=${weatherKey}`
-        // https://api.weatherbit.io/v2.0/forecast/daily?city=amman&key=01e6b09a24b640dd9610c10e0045bb58
+    // const city = req.query.city;
+    const url2 = `https://api.weatherbit.io/v2.0/forecast/daily`;
+    // https://api.weatherbit.io/v2.0/forecast/daily?city=amman&key=01e6b09a24b640dd9610c10e0045bb58
 
-    superagent.get(url2).then(weatherData => {
+    // 7088c549dafb4dd7a435111798d8227f
+    const queryObj = {
+        lat: req.query.latitude,
+        lon: req.query.longitude,
+        key: weatherKey
+    }
+
+
+    superagent.get(url2).query(queryObj).then(weatherData => {
         let weatherd = weatherData.body.data.map(element => {
-            const weatherObj = new Data(element)
+            const weatherObj = new Weather(element)
             return weatherObj
         })
-        response.send(weatherd);
+        res.send(weatherd);
     }).catch(() => {
         res.status(500).send('sorry, error in getting data');
 
@@ -123,24 +125,14 @@ function handleDayRequest(req, res) {
 }
 
 
-
-
-function Location(datas) {
-    this.search_query = 'Lynnwood';
-    this.formatted_query = datas[0].display_name;
-    this.latitude = datas[0].lat;
-    this.longitude = datas[0].lon;
+function Weather(data) {
+    this.forecast = data.weather.description;
+    this.time = data.datetime;
 }
 
-
-function Data(datas) {
-    this.forecast = datas.weather.description;
-    this.time = datas.datetime;
-}
-
-function error(req, res) {
-    if (res) res.status(500).send("sorry, something went error");
-}
+// function error(req, res) {
+//     if (res) res.status(500).send("sorry, something went error");
+// }
 
 
 
