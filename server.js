@@ -7,27 +7,56 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
+const pg = require('pg')
+
 
 const PORT = process.env.PORT;
 const GEO_CODE_API_KEY = process.env.GEO_CODE_API_KEY;
 const PARK_API_KEY = process.env.PARK_API_KEY;
+const DATABASE_URL = process.env.DATABASE_URL;
 const app = express();
 app.use(cors());
+
+const client = new pg.Client(DATABASE_URL);
+
+
 
 app.get('/location', handleLocationRequest);
 app.get('/weather', handleDayRequest);
 app.get('/park', parkHandler);
 app.use('*', notFoundHandler);
+app.get('/', (req, res) => {
+    response.status(200).send('ok');
+});
+
+
+
+client.connect().then(() => {
+    app.listen(PORT, () => {
+        console.log('Connected to database:', client.connectionParameters.database);
+        console.log('Server up on', PORT);
+    });
+});
+
 
 
 function handleLocationRequest(req, res) {
     // const searchQuery = req.query;
     const city = req.query.city;
     const urlGEO = `https://us1.locationiq.com/v1/search.php?key=${GEO_CODE_API_KEY}&q=${city}&format=json`;
+    const sqlQuery = `SELECT * FROM book_wiki`;
     // https://eu1.locationiq.com/v1/search.php?key=pk.5fef4bef87a31d4d9cfb6f09f0cd8468=amman&format=json
     // const locationData = require('./data/location.json');
     // const location = new Location(locationData)
     // res.send(location);
+
+    const sqlQuery = `INSERT INTO book_wiki(search_query, formatted_query, latitude, longitude) VALUES($1, $2, $3, $4)`;
+
+    client.query(sqlQuery).then(result => {
+        res.status(200).json(result.rows);
+    }).catch(error => {
+        res.status(500).send('internal server error')
+    })
 
 
     if (!city) {
@@ -140,6 +169,6 @@ app.use('*', (req, res) => {
     res.send('hello');
 
 });
-app.listen(PORT, () => {
-    console.log(PORT + 'hello');
-})
+// app.listen(PORT, () => {
+//     console.log(PORT + 'hello');
+// })
