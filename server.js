@@ -8,7 +8,7 @@ const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
 const pg = require('pg');
-const { json } = require('express');
+// const { json } = require('express');
 
 
 const PORT = process.env.PORT;
@@ -32,6 +32,8 @@ app.get('/', (req, res) => {
 
 
 client.connect().then(() => {
+
+
     app.listen(PORT, () => {
         console.log('Connected to database:', client.connectionParameters.database);
         console.log('Server up on', PORT);
@@ -53,9 +55,8 @@ function handleLocationRequest(req, res) {
     }
 
     const safeValues = [city];
-    const sqlQuery = `SELECT * FROM locations WHERE search_query=$1`;
+    const sqlQuery = `SELECT * FROM locations WHERE name=$1`;
     client.query(sqlQuery, safeValues)
-
     const cityQueryParam = {
         key: GEO_CODE_API_KEY,
         city: city,
@@ -68,8 +69,7 @@ function handleLocationRequest(req, res) {
 
     superagent.get(urlGEO).query(cityQueryParam).then(resData => {
         console.log(resData.body);
-        console.log('we have error');
-        // const { city } = req.query
+        const { city } = req.query
         const location = new Location(city, resData.body[0]);
         const safeValues = [city, location.search_query, location.formatted_query, location.latitude, location.longitude];
         const sqlQuery = `INSERT INTO locations(city, search_query, formatted_query, latitude, longitude) VALUES($1, $2, $3, $4)`;
@@ -90,8 +90,8 @@ function handleLocationRequest(req, res) {
         console.log('ERROR', error);
         res.status(500).send(error);
 
-    })
 
+    })
 
 }
 
@@ -102,7 +102,7 @@ function Location(city, geoData) {
     this.longitude = geoData.lon;
 }
 
-// data.addresses[0] 
+
 function Park(data) {
     this.name = data.name;
     this.address = `${data.addresses[0].line1} ${data.addresses[0].city} ${data.addresses[0].stateCode} ${data.addresses[0].postalCode}`;
@@ -112,13 +112,13 @@ function Park(data) {
 }
 
 function parkHandler(req, res) {
-    let parkKey = process.env.PARK_API_KEY;
+    let PARK_API_KEY = process.env.PARK_API_KEY;
     const latitude = req.query.latitude;
     const longitude = req.query.longitude;
 
 
     // let url = `https://developer.nps.gov/api/v1/parks?parkCode=${parkCode}&api_key=${parkKey}`;
-    let url3 = `https://developer.nps.gov/api/v1/parks?parkCode=acad&api_key=${parkKey}&limit=10`;
+    let url3 = `https://developer.nps.gov/api/v1/parks?parkCode=acad&api_key=${PARK_API_KEY}&limit=10`;
     superagent.get(url3).then(parkData => {
         let parkd = parkData.body.data.map(element => {
             const parkObj = new Park(element);
