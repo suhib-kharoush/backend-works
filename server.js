@@ -15,6 +15,7 @@ const PORT = process.env.PORT;
 const GEO_CODE_API_KEY = process.env.GEO_CODE_API_KEY;
 const PARK_API_KEY = process.env.PARK_API_KEY;
 const DATABASE_URL = process.env.DATABASE_URL;
+const MOVIE_API_KEY = process.env.MOVIE_API_KEY;
 const app = express();
 app.use(cors());
 
@@ -26,6 +27,7 @@ app.get('/location', handleLocationRequest);
 app.get('/weather', handleDayRequest);
 app.get('/park', parkHandler);
 app.use('*', notFoundHandler);
+app.use('/movies', handleMovie);
 app.get('/', (req, res) => {
     res.status(200).send('ok');
 });
@@ -111,6 +113,19 @@ function Park(data) {
     this.url3 = data.url;
 }
 
+
+function Movie(moviesData) {
+    this.title = moviesData.title;
+    this.overview = moviesData.overview;
+    this.total_votes = moviesData.total_votes;
+    this.image_url = `https://image.tmdb.org/t/p/w500${moviesData.poster_path}`
+    this.popularity = moviesData.popularity;
+    this.released_on = moviesData.released_on;
+}
+
+
+
+
 function parkHandler(req, res) {
     let PARK_API_KEY = process.env.PARK_API_KEY;
     const latitude = req.query.latitude;
@@ -128,6 +143,25 @@ function parkHandler(req, res) {
     }).catch(() => {
         res.status(500).send('sorry, error in getting data from server');
 
+    })
+}
+
+
+
+function handleMovie(req, res) {
+    const city = req.query.search_query;
+    MOVIE_API_KEY = process.env.MOVIE_API_KEY;
+
+
+    const movieUrl = `https://api.themoviedb.org/3/movie/550?api_key=${MOVIE_API_KEY}`
+    let movies = [];
+
+    superagent.get(movieUrl).then(moviesData => {
+        movies = moviesData.body.result.map(element => {
+            const moviesObj = new Movie(element);
+            return moviesObj;
+        })
+        res.send(movies);
     })
 }
 
