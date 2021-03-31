@@ -7,7 +7,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
-const pg = require('pg')
+const pg = require('pg');
+const { json } = require('express');
 
 
 const PORT = process.env.PORT;
@@ -30,7 +31,6 @@ app.get('/', (req, res) => {
 });
 
 
-
 client.connect().then(() => {
     app.listen(PORT, () => {
         console.log('Connected to database:', client.connectionParameters.database);
@@ -43,33 +43,52 @@ client.connect().then(() => {
 function handleLocationRequest(req, res) {
     // const searchQuery = req.query;
     const city = req.query.city;
-    const urlGEO = `https://us1.locationiq.com/v1/search.php?key=${GEO_CODE_API_KEY}&q=${city}&format=json`;
-    const sqlQuery = `SELECT * FROM book_wiki`;
+    const urlGEO = `https://us1.locationiq.com/v1/search.php`;
     // https://eu1.locationiq.com/v1/search.php?key=pk.5fef4bef87a31d4d9cfb6f09f0cd8468=amman&format=json
     // const locationData = require('./data/location.json');
     // const location = new Location(locationData)
     // res.send(location);
-
-    const sqlQuery = `INSERT INTO book_wiki(search_query, formatted_query, latitude, longitude) VALUES($1, $2, $3, $4)`;
-
-    client.query(sqlQuery).then(result => {
-        res.status(200).json(result.rows);
-    }).catch(error => {
-        res.status(500).send('internal server error')
-    })
-
-
     if (!city) {
         res.status(404).send('no search query was provided');
     }
 
-    superagent.get(urlGEO).then(resData => {
+    const safeValues = [city];
+    const sqlQuery = `SELECT * FROM locations WHERE search_query=$1`;
+    client.query(sqlQuery, safeValues)
+
+    const cityQueryParam = {
+        key: GEO_CODE_API_KEY,
+        city: city,
+        format: 'json',
+    }
+
+
+
+
+
+    superagent.get(urlGEO).query(cityQueryParam).then(resData => {
         console.log(resData.body);
+        console.log('we have error');
+        // const { city } = req.query
         const location = new Location(city, resData.body[0]);
+        const safeValues = [city, location.search_query, location.formatted_query, location.latitude, location.longitude];
+        const sqlQuery = `INSERT INTO locations(city, search_query, formatted_query, latitude, longitude) VALUES($1, $2, $3, $4)`;
+
+
+        client.query(sqlQuery, safeValues).then(result => {
+            if (result.rows.length === 0) {
+                throw error
+            }
+            res.status(200).json(result.rows[0]);
+        }).catch(error => {
+            res.status(500).send(error)
+        })
+
+
         res.status(200).send(location)
     }).catch((error) => {
         console.log('ERROR', error);
-        res.status(500).send('sorry, something went wrong');
+        res.status(500).send(error);
 
     })
 
@@ -169,6 +188,13 @@ app.use('*', (req, res) => {
     res.send('hello');
 
 });
-// app.listen(PORT, () => {
-//     console.log(PORT + 'hello');
+app.listen(PORT, () => {
+    console.log(PORT + 'hello');
+})
+
+
+// client.query(sqlQuery).then(result => {
+//     res.status(200).json(result.rows);
+// }).catch(error => {
+//     res.status(500).send(error)
 // })
