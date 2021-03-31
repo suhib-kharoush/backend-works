@@ -16,6 +16,7 @@ const GEO_CODE_API_KEY = process.env.GEO_CODE_API_KEY;
 const PARK_API_KEY = process.env.PARK_API_KEY;
 const DATABASE_URL = process.env.DATABASE_URL;
 const MOVIE_API_KEY = process.env.MOVIE_API_KEY;
+const YELP_API_KEY = process.env.PARK_API_KEY;
 const app = express();
 app.use(cors());
 
@@ -28,6 +29,7 @@ app.get('/weather', handleDayRequest);
 app.get('/park', parkHandler);
 app.use('*', notFoundHandler);
 app.use('/movies', handleMovie);
+app.use('/yelp', handleYelp);
 app.get('/', (req, res) => {
     res.status(200).send('ok');
 });
@@ -125,6 +127,15 @@ function Movie(moviesData) {
 
 
 
+function Yelp(yelpData) {
+    this.name = yelpData.name;
+    this.image_url = yelpData.image_url;
+    this.price = yelpData.price;
+    this.rating = yelpData.rating;
+    this.url = yelpData.url;
+}
+
+
 
 function parkHandler(req, res) {
     let PARK_API_KEY = process.env.PARK_API_KEY;
@@ -164,6 +175,30 @@ function handleMovie(req, res) {
         res.send(movies);
     })
 }
+
+
+
+
+function handleYelp(req, res) {
+    const city = req.query.search_query;
+    const page = req.query.page;
+    const numPerPage = 5;
+    const startIdx = ((page - 1) * numPerPage + 1);
+
+    const yelpUrl = `https://api.yelp.com/v3/businesses/search?location=${city}&limit=${numbPerPage}&offset=${startIdx}`;
+
+    let yelpArr = [];
+
+    superagent.get(yelpUrl).set('Authorization', `Bearer ${YELP_API_KEY}`)
+        .then(yelpData => {
+            yelpArr = yelpData.body.buisnesses.map(element => {
+                const yelpObj = new Yelp(element);
+                return yelpObj;
+            })
+            res.send(yelpArr);
+        })
+}
+
 
 
 
