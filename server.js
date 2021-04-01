@@ -12,6 +12,7 @@ const pg = require('pg');
 
 
 const PORT = process.env.PORT;
+const ENV = process.env.DEV || 'Dep';
 const GEO_CODE_API_KEY = process.env.GEO_CODE_API_KEY;
 const PARK_API_KEY = process.env.PARK_API_KEY;
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -19,15 +20,34 @@ const MOVIE_API_KEY = process.env.MOVIE_API_KEY;
 const YELP_API_KEY = process.env.PARK_API_KEY;
 const app = express();
 app.use(cors());
+// let client = '';
+// if (ENV === 'Dep') {
 
-// const client = new pg.Client(DATABASE_URL);
+//     client = new pg.Client({
+//         connectionString: DATABASE_URL,
+//         ssl: {
+//             rejectUnauthorized: false
+//         }
+//     });
+// } else {
+//     client = new pg.Client(DATABASE_URL);
 
-const client = new pg.Client({
-    connectionString: DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
-});
+// }
+
+let client = '';
+if (ENV === 'DEP') {
+    client = new pg.Client({
+        connectionString: DATABASE_URL,
+        ssl: {
+            rejectUnauthorized: false
+        }
+    });
+} else {
+    client = new pg.Client({
+        connectionString: DATABASE_URL,
+    });
+}
+
 
 app.get('/location', handleLocationRequest);
 app.get('/weather', handleDayRequest);
