@@ -12,7 +12,7 @@ const pg = require('pg');
 
 
 const PORT = process.env.PORT;
-const ENV = process.env.DEV || 'Dep';
+const ENV = process.env.DEV || 'DEP';
 const GEO_CODE_API_KEY = process.env.GEO_CODE_API_KEY;
 const PARK_API_KEY = process.env.PARK_API_KEY;
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -55,9 +55,9 @@ app.get('/parks', parkHandler);
 app.use('*', notFoundHandler);
 app.use('/movies', handleMovie);
 app.use('/yelp', handleYelp);
-app.get('/', (req, res) => {
-    res.status(200).send('ok');
-});
+// app.get('/', (req, res) => {
+//     res.status(200).send('ok');
+// });
 
 
 client.connect().then(() => {
