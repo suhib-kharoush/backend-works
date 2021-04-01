@@ -265,9 +265,9 @@ app.use('*', (req, res) => {
     res.send('hello');
 
 });
-app.listen(PORT, () => {
-    console.log(PORT + 'hello');
-})
+// app.listen(PORT, () => {
+//     console.log(PORT + 'hello');
+// })
 
 
 // client.query(sqlQuery).then(result => {
