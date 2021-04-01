@@ -20,13 +20,18 @@ const YELP_API_KEY = process.env.PARK_API_KEY;
 const app = express();
 app.use(cors());
 
-const client = new pg.Client(DATABASE_URL);
+// const client = new pg.Client(DATABASE_URL);
 
-
+const client = new pg.Client({
+    connectionString: DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
 
 app.get('/location', handleLocationRequest);
 app.get('/weather', handleDayRequest);
-app.get('/park', parkHandler);
+app.get('/parks', parkHandler);
 app.use('*', notFoundHandler);
 app.use('/movies', handleMovie);
 app.use('/yelp', handleYelp);
@@ -43,6 +48,9 @@ client.connect().then(() => {
         console.log('Server up on', PORT);
     });
 });
+
+
+
 
 
 
