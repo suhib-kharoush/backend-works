@@ -18,6 +18,7 @@ const PARK_API_KEY = process.env.PARK_API_KEY;
 const DATABASE_URL = process.env.DATABASE_URL;
 const MOVIE_API_KEY = process.env.MOVIE_API_KEY;
 const YELP_API_KEY = process.env.PARK_API_KEY;
+const WEATHER_API_KEY = process.env.WEATHER_API_KEY
 const app = express();
 app.use(cors());
 // let client = '';
@@ -38,9 +39,9 @@ let client = '';
 if (ENV === 'DEP') {
     client = new pg.Client({
         connectionString: DATABASE_URL,
-        ssl: {
-            rejectUnauthorized: false
-        }
+        // ssl: {
+        //     rejectUnauthorized: false
+        // }
     });
 } else {
     client = new pg.Client({
@@ -52,22 +53,15 @@ if (ENV === 'DEP') {
 app.get('/location', handleLocationRequest);
 app.get('/weather', handleDayRequest);
 app.get('/parks', parkHandler);
+app.get('/movies', handleMovie);
+app.get('/yelp', handleYelp);
 app.use('*', notFoundHandler);
-app.use('/movies', handleMovie);
-app.use('/yelp', handleYelp);
 // app.get('/', (req, res) => {
 //     res.status(200).send('ok');
 // });
 
 
-client.connect().then(() => {
 
-
-    app.listen(PORT, () => {
-        console.log('Connected to database:', client.connectionParameters.database);
-        console.log('Server up on', PORT);
-    });
-});
 
 
 
@@ -77,7 +71,6 @@ client.connect().then(() => {
 function handleLocationRequest(req, res) {
     // const searchQuery = req.query;
     const city = req.query.city;
-    const urlGEO = `https://us1.locationiq.com/v1/search.php`;
     // https://eu1.locationiq.com/v1/search.php?key=pk.5fef4bef87a31d4d9cfb6f09f0cd8468=amman&format=json
     // const locationData = require('./data/location.json');
     // const location = new Location(locationData)
@@ -85,47 +78,54 @@ function handleLocationRequest(req, res) {
     if (!city) {
         res.status(404).send('no search query was provided');
     }
+    addingToDataBase(city).then(results=>{
+        res.send(results)
+    });
+    // const safeValues = [city];
+    // const sqlQuery = `SELECT * FROM locations WHERE search_query=$1`;
+    // client.query(sqlQuery, safeValues)
+   
+    
+    
+}
+function addingToDataBase(city){
+const safeValus = [city]
 
-    const safeValues = [city];
-    const sqlQuery = `SELECT * FROM locations WHERE name=$1`;
+const newQuery = `SELECT * FROM locations WHERE search_query=$1;`
+return client.query(newQuery, safeValus).then(results=>{
+    if (results.rows.length !== 0) {
+        return results.rows[0]
+    }else{
+        const cityQueryParam = {
+            key: GEO_CODE_API_KEY,
+            city: city,
+            format: 'json',
+        }
+            const urlGEO = `https://us1.locationiq.com/v1/search.php`;
+return superagent.get(urlGEO).query(cityQueryParam).then(data=>{
+    const locations = new Location(city, data.body[0])
+    const safeValues = [locations.search_query, locations.formatted_query, locations.latitude, locations.longitude];
+    const sqlQuery = `INSERT INTO locations(search_query, formatted_query, latitude, longitude) VALUES($1, $2, $3, $4)`;
     client.query(sqlQuery, safeValues)
-    const cityQueryParam = {
-        key: GEO_CODE_API_KEY,
-        city: city,
-        format: 'json',
-    }
+    return locations;
 
+   
 
-
-
-
-    superagent.get(urlGEO).query(cityQueryParam).then(resData => {
-        console.log(resData.body);
-        const { city } = req.query
-        const location = new Location(city, resData.body[0]);
-        const safeValues = [city, location.search_query, location.formatted_query, location.latitude, location.longitude];
-        const sqlQuery = `INSERT INTO locations(city, search_query, formatted_query, latitude, longitude) VALUES($1, $2, $3, $4)`;
-
-
-        client.query(sqlQuery, safeValues).then(result => {
-            if (result.rows.length === 0) {
-                throw error
-            }
-            res.status(200).json(result.rows[0]);
-        }).catch(error => {
-            res.status(500).send(error)
-        })
-
-
-        res.status(200).send(location)
-    }).catch((error) => {
-        console.log('ERROR', error);
-        res.status(500).send(error);
-
-
-    })
+})
 
 }
+    })
+}
+//     superagent.get(urlGEO).query(cityQueryParam).then(resData => {
+//         console.log(resData.body);
+//         const { city } = req.query
+//         const location = new Location(city, resData.body[0]);
+        
+        
+        
+      
+
+// }
 
 function Location(city, geoData) {
     this.search_query = city;
@@ -140,7 +140,7 @@ function Park(data) {
     this.address = `${data.addresses[0].line1} ${data.addresses[0].city} ${data.addresses[0].stateCode} ${data.addresses[0].postalCode}`;
     this.fee = '0.00';
     this.description = data.description;
-    this.url3 = data.url;
+    this.url = data.url;
 }
 
 
@@ -166,19 +166,22 @@ function Yelp(yelpData) {
 
 
 function parkHandler(req, res) {
-    let PARK_API_KEY = process.env.PARK_API_KEY;
-    const latitude = req.query.latitude;
-    const longitude = req.query.longitude;
-
+    // const latitude = req.query.latitude;
+    // const longitude = req.query.longitude;
+    const city = req.query.search_query;
 
     // let url = `https://developer.nps.gov/api/v1/parks?parkCode=${parkCode}&api_key=${parkKey}`;
-    let url3 = `https://developer.nps.gov/api/v1/parks?parkCode=acad&api_key=${PARK_API_KEY}&limit=10`;
+    let url3 = `https://developer.nps.gov/api/v1/parks?q=${city}&api_key=${PARK_API_KEY}`;
+
+    if (!city) { //for empty request
+        res.status(404).send('no search query was provided');
+    }
+
     superagent.get(url3).then(parkData => {
-        let parkd = parkData.body.data.map(element => {
-            const parkObj = new Park(element);
-            return parkObj;
+        const parkd = parkData.body.data.map(element => {
+            return new Park(element);
         })
-        res.send(parkd);
+        res.status(200).send(parkd);
     }).catch(() => {
         res.status(500).send('sorry, error in getting data from server');
 
@@ -189,18 +192,17 @@ function parkHandler(req, res) {
 
 function handleMovie(req, res) {
     const city = req.query.search_query;
-    MOVIE_API_KEY = process.env.MOVIE_API_KEY;
-
-
-    const movieUrl = `https://api.themoviedb.org/3/movie/550?api_key=${MOVIE_API_KEY}`
-    let movies = [];
+    const movieUrl = `https://api.themoviedb.org/3/search/movie?api_key=${MOVIE_API_KEY}&query=${city}&page=1&sort_by=popularity.desc&include_adult=false`
 
     superagent.get(movieUrl).then(moviesData => {
-        movies = moviesData.body.result.map(element => {
+        const movies = moviesData.body.results.map(element => {
             const moviesObj = new Movie(element);
             return moviesObj;
         })
         res.send(movies);
+    }).catch(error => {
+        console.log(error);
+        res.status(500).send('OPPS')
     })
 }
 
@@ -208,20 +210,20 @@ function handleMovie(req, res) {
 
 
 function handleYelp(req, res) {
-    const city = req.query.search_query;
+    const longitude = req.query.longitude;
+    const latitude = req.query.latitude;
     const page = req.query.page;
     const numPerPage = 5;
     const startIdx = ((page - 1) * numPerPage + 1);
 
-    const yelpUrl = `https://api.yelp.com/v3/businesses/search?location=${city}&limit=${numbPerPage}&offset=${startIdx}`;
+    const yelpUrl = `https://api.yelp.com/v3/businesses/search?longitude=${longitude}&latitude=${latitude}&limit=${numPerPage}&offset=${startIdx}`;
 
-    let yelpArr = [];
 
-    superagent.get(yelpUrl).set('Authorization', `Bearer ${YELP_API_KEY}`)
-        .then(yelpData => {
-            yelpArr = yelpData.body.buisnesses.map(element => {
-                const yelpObj = new Yelp(element);
-                return yelpObj;
+    superagent.get(yelpUrl).set('Authorization', `Bearer ${YELP_API_KEY}`).then(yelpData => {
+            console.log(yelpData);
+           const yelpArr = yelpData.body.buisnesses.map(element => {
+                return new Yelp(element);
+                
             })
             res.send(yelpArr);
         })
@@ -239,16 +241,16 @@ function notFoundHandler(req, res) {
 function handleDayRequest(req, res) {
     // const getWeatherData = require('./data/weather.json');
     // const dataWeather = [];
-    let weatherKey = process.env.WEATHER_API_KEY;
-    // const city = req.query.city;
+    // let weatherKey = process.env.WEATHER_API_KEY;
+    const latitude = req.query.latitude;
+    const longitude = req.query.longitude;
     const url2 = `https://api.weatherbit.io/v2.0/forecast/daily`;
     // https://api.weatherbit.io/v2.0/forecast/daily?city=amman&key=01e6b09a24b640dd9610c10e0045bb58
 
-    // 7088c549dafb4dd7a435111798d8227f
     const queryObj = {
-        lat: req.query.latitude,
-        lon: req.query.longitude,
-        key: weatherKey
+        lat: latitude,
+        lon: longitude,
+        key: WEATHER_API_KEY
     }
 
 
@@ -257,16 +259,13 @@ function handleDayRequest(req, res) {
             const weatherObj = new Weather(element)
             return weatherObj
         })
-        res.send(weatherd);
+        res.send(weatherd.slice(0-9));
     }).catch(() => {
         res.status(500).send('sorry, error in getting data');
 
     })
 
-    // getWeatherData.data.forEach(element => {
-    //     dataWeather.push(new Data(element))
-    // })
-    // res.send(dataWeather);
+    
 }
 
 
@@ -275,23 +274,16 @@ function Weather(data) {
     this.time = data.datetime;
 }
 
-// function error(req, res) {
-//     if (res) res.status(500).send("sorry, something went error");
-// }
 
 
 
-app.use('*', (req, res) => {
-    res.send('hello');
 
-});
-// app.listen(PORT, () => {
-//     console.log(PORT + 'hello');
-// })
+client.connect().then(() => {
 
 
-// client.query(sqlQuery).then(result => {
-//     res.status(200).json(result.rows);
-// }).catch(error => {
-//     res.status(500).send(error)
-// })
+    app.listen(PORT, () => {
+        console.log('Connected to database:', client.connectionParameters.database);
+        console.log('Server up on', PORT);
+    });
+}
+);
