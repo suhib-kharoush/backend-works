@@ -16,7 +16,7 @@ app.use(cors());
 
 app.get('/location', handleLocationRequest);
 app.get('/weather', handleDayRequest);
-app.get('/park', parkHandler);
+app.get('/parks', parkHandler);
 app.use('*', notFoundHandler);
 
 
@@ -70,7 +70,7 @@ function parkHandler(req, res) {
 
 
     // let url = `https://developer.nps.gov/api/v1/parks?parkCode=${parkCode}&api_key=${parkKey}`;
-    let url3 = `https://developer.nps.gov/api/v1/parks?parkCode=acad&api_key=${parkKey}&limit=10`;
+    let url3 = `https://developer.nps.gov/api/v1/parks?parkCode=acad&api_key=${parkKey}&limit=${10}`;
     superagent.get(url3).then(parkData => {
         let parkd = parkData.body.data.map(element => {
             const parkObj = new Park(element);
@@ -112,7 +112,7 @@ function handleDayRequest(req, res) {
             const weatherObj = new Weather(element)
             return weatherObj
         })
-        res.send(weatherd);
+        res.send(weatherd.slice(0 - 9));
     }).catch(() => {
         res.status(500).send('sorry, error in getting data');
 
