@@ -18,6 +18,10 @@ function handleLocationRequest(req, res) {
     const locationData = require('./data/location.json');
     const location = new Location(locationData)
     res.send(location);
+
+    if (!location) {
+        res.status(404).send("Sorry, city not found")
+    }
 }
 
 
@@ -31,7 +35,7 @@ function handleDayRequest(req, res) {
 }
 
 function Location(datas) {
-    this.search_query = 'Lynnwood';
+    this.search_query = datas.city;
     this.formatted_query = datas[0].display_name;
     this.latitude = datas[0].lat;
     this.longitude = datas[0].lon;
