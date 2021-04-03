@@ -14,4 +14,3 @@ Create two constructors one for weather and the other for weather.
 Architecture
 I have used json files for data files.
 I have use package.json file and express node modules.
-Change Log
