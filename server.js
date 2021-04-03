@@ -12,6 +12,7 @@ const pg = require('pg');
 
 
 const PORT = process.env.PORT;
+const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 const GEO_CODE_API_KEY = process.env.GEO_CODE_API_KEY;
 const PARK_API_KEY = process.env.PARK_API_KEY;
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -36,7 +37,7 @@ client.connect().then(() => {
 
     app.listen(PORT, () => {
         console.log('Connected to database:', client.connectionParameters.database);
-        console.log('Server up on', PORT);
+        console.log('Server up on PORT', PORT);
     });
 });
 
@@ -55,43 +56,57 @@ function handleLocationRequest(req, res) {
     }
 
     const safeValues = [city];
-    const sqlQuery = `SELECT * FROM locations WHERE name=$1`;
-    client.query(sqlQuery, safeValues)
-    const cityQueryParam = {
-        key: GEO_CODE_API_KEY,
-        city: city,
-        format: 'json',
-    }
+    const sqlQuery = `SELECT * FROM locations WHERE search_query=$1`;
+    client.query(sqlQuery, safeValues).then(result => {
+        let check = false;
+        result.rows.forEach(index => {
+            if (index.search_query === city) {
+                check = true;
+                res.status(200).send(index)
 
-
-
-
-
-    superagent.get(urlGEO).query(cityQueryParam).then(resData => {
-        console.log(resData.body);
-        const { city } = req.query
-        const location = new Location(city, resData.body[0]);
-        const safeValues = [city, location.search_query, location.formatted_query, location.latitude, location.longitude];
-        const sqlQuery = `INSERT INTO locations(city, search_query, formatted_query, latitude, longitude) VALUES($1, $2, $3, $4)`;
-
-
-        client.query(sqlQuery, safeValues).then(result => {
-            if (result.rows.length === 0) {
-                throw error
             }
-            res.status(200).json(result.rows[0]);
-        }).catch(error => {
-            res.status(500).send(error)
         })
 
+        if (!check) {
+            const cityQueryParam = {
+                key: GEO_CODE_API_KEY,
+                city: city,
+                format: 'json',
+            }
 
-        res.status(200).send(location)
-    }).catch((error) => {
-        console.log('ERROR', error);
-        res.status(500).send(error);
 
+
+
+
+            superagent.get(urlGEO).query(cityQueryParam).then(resData => {
+                console.log(resData.body);
+                const { city } = req.query
+                const location = new Location(city, resData.body[0]);
+                const safeValues = [location.search_query, location.formatted_query, location.latitude, location.longitude];
+                const sqlQuery = `INSERT INTO locations(search_query, formatted_query, latitude, longitude) VALUES($1, $2, $3, $4)`;
+
+
+                client.query(sqlQuery, safeValues).then(result => {
+                    if (result.rows.length === 0) {
+                        throw error
+                    }
+                    res.status(200).json(result.rows[0]);
+                }).catch(error => {
+                    res.status(500).send(error)
+                })
+
+
+                res.status(200).send(location)
+            }).catch((error) => {
+                console.log('ERROR', error);
+                res.status(500).send(error);
+
+
+            })
+        }
 
     })
+
 
 }
 
@@ -142,7 +157,7 @@ function notFoundHandler(req, res) {
 function handleDayRequest(req, res) {
     // const getWeatherData = require('./data/weather.json');
     // const dataWeather = [];
-    let weatherKey = process.env.WEATHER_API_KEY;
+    // let WEATHER_API_KEY = process.env.WEATHER_API_KEY;
     // const city = req.query.city;
     const url2 = `https://api.weatherbit.io/v2.0/forecast/daily`;
     // https://api.weatherbit.io/v2.0/forecast/daily?city=amman&key=01e6b09a24b640dd9610c10e0045bb58
@@ -151,14 +166,13 @@ function handleDayRequest(req, res) {
     const queryObj = {
         lat: req.query.latitude,
         lon: req.query.longitude,
-        key: weatherKey
+        key: WEATHER_API_KEY,
     }
-
-
     superagent.get(url2).query(queryObj).then(weatherData => {
         let weatherd = weatherData.body.data.map(element => {
-            const weatherObj = new Weather(element)
-            return weatherObj
+            return new Weather(element)
+
+
         })
         res.send(weatherd);
     }).catch(() => {
@@ -175,7 +189,7 @@ function handleDayRequest(req, res) {
 
 function Weather(data) {
     this.forecast = data.weather.description;
-    this.time = data.datetime;
+    this.time = data.valid_date;
 }
 
 // function error(req, res) {
