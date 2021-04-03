@@ -17,7 +17,7 @@ const GEO_CODE_API_KEY = process.env.GEO_CODE_API_KEY;
 const PARK_API_KEY = process.env.PARK_API_KEY;
 const DATABASE_URL = process.env.DATABASE_URL;
 const MOVIE_API_KEY = process.env.MOVIE_API_KEY;
-const YELP_API_KEY = process.env.PARK_API_KEY;
+const YELP_API_KEY = process.env.YELP_API_KEY;
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY
 const app = express();
 app.use(cors());
@@ -78,52 +78,53 @@ function handleLocationRequest(req, res) {
     if (!city) {
         res.status(404).send('no search query was provided');
     }
-    addingToDataBase(city).then(results=>{
+    addingToDataBase(city).then(results => {
         res.send(results)
     });
     // const safeValues = [city];
     // const sqlQuery = `SELECT * FROM locations WHERE search_query=$1`;
     // client.query(sqlQuery, safeValues)
-   
-    
-    
-}
-function addingToDataBase(city){
-const safeValus = [city]
 
-const newQuery = `SELECT * FROM locations WHERE search_query=$1;`
-return client.query(newQuery, safeValus).then(results=>{
-    if (results.rows.length !== 0) {
-        return results.rows[0]
-    }else{
-        const cityQueryParam = {
-            key: GEO_CODE_API_KEY,
-            city: city,
-            format: 'json',
-        }
+
+
+}
+
+function addingToDataBase(city) {
+    const safeValus = [city]
+
+    const newQuery = `SELECT * FROM locations WHERE search_query=$1;`
+    return client.query(newQuery, safeValus).then(results => {
+        if (results.rows.length !== 0) {
+            return results.rows[0]
+        } else {
+            const cityQueryParam = {
+                key: GEO_CODE_API_KEY,
+                city: city,
+                format: 'json',
+            }
             const urlGEO = `https://us1.locationiq.com/v1/search.php`;
-return superagent.get(urlGEO).query(cityQueryParam).then(data=>{
-    const locations = new Location(city, data.body[0])
-    const safeValues = [locations.search_query, locations.formatted_query, locations.latitude, locations.longitude];
-    const sqlQuery = `INSERT INTO locations(search_query, formatted_query, latitude, longitude) VALUES($1, $2, $3, $4)`;
-    client.query(sqlQuery, safeValues)
-    return locations;
+            return superagent.get(urlGEO).query(cityQueryParam).then(data => {
+                const locations = new Location(city, data.body[0])
+                const safeValues = [locations.search_query, locations.formatted_query, locations.latitude, locations.longitude];
+                const sqlQuery = `INSERT INTO locations(search_query, formatted_query, latitude, longitude) VALUES($1, $2, $3, $4)`;
+                client.query(sqlQuery, safeValues)
+                return locations;
 
-   
 
-})
 
-}
+            })
+
+        }
     })
 }
 //     superagent.get(urlGEO).query(cityQueryParam).then(resData => {
 //         console.log(resData.body);
 //         const { city } = req.query
 //         const location = new Location(city, resData.body[0]);
-        
-        
-        
-      
+
+
+
+
 
 // }
 
@@ -155,12 +156,12 @@ function Movie(moviesData) {
 
 
 
-function Yelp(yelpData) {
-    this.name = yelpData.name;
-    this.image_url = yelpData.image_url;
-    this.price = yelpData.price;
-    this.rating = yelpData.rating;
-    this.url = yelpData.url;
+function Yelp(data) {
+    this.name = data.name;
+    this.image_url = data.image_url;
+    this.price = data.price;
+    this.rating = data.rating;
+    this.url = data.url;
 }
 
 
@@ -220,13 +221,13 @@ function handleYelp(req, res) {
 
 
     superagent.get(yelpUrl).set('Authorization', `Bearer ${YELP_API_KEY}`).then(yelpData => {
-            console.log(yelpData);
-           const yelpArr = yelpData.body.buisnesses.map(element => {
-                return new Yelp(element);
-                
-            })
-            res.send(yelpArr);
+        console.log(yelpData);
+        const yelpArr = yelpData.body.businesses.map((element) => {
+            return new Yelp(element);
+
         })
+        res.send(yelpArr);
+    })
 }
 
 
@@ -259,13 +260,13 @@ function handleDayRequest(req, res) {
             const weatherObj = new Weather(element)
             return weatherObj
         })
-        res.send(weatherd.slice(0-9));
+        res.send(weatherd.slice(0 - 9));
     }).catch(() => {
         res.status(500).send('sorry, error in getting data');
 
     })
 
-    
+
 }
 
 
@@ -285,5 +286,4 @@ client.connect().then(() => {
         console.log('Connected to database:', client.connectionParameters.database);
         console.log('Server up on', PORT);
     });
-}
-);
+});
